@@ -38,12 +38,12 @@ body
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-#ping-btn:hover
+#ping-btn:hover:enabled
 {
     border: 0.6vh solid white;
 }
 
-#ping-btn:active
+#ping-btn:active:enabled
 {
     box-shadow: 0vw 0.5vw rgb(52, 23, 32);
     transform: translateY(1vh);
