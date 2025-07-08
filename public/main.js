@@ -5,6 +5,13 @@ socket.on("connect", () => {
     console.log(`Client connecting with socket id:${socket.id}`);
     socket.emit("identify", crypto.randomUUID());
 });
+
+let canJoin = true
+let disconnectMessage;
+socket.on("connectionDenied", (message) => {
+    canJoin = false;
+    disconnectMessage = message;
+});
  
 async function getUsers()
 {
@@ -20,11 +27,12 @@ async function getUsers()
         }
 
         const json = await response.json();
-        console.log(json);
+        return json.usersOnline;
     }
     catch (error)
     {
         console.error(error.message);
+        return [];
     }
 }
 
@@ -51,9 +59,9 @@ async function isBtnDisabled()
     }
 }
 
-async function sendData(clientData)
+async function switchBtnState()
 {
-    const url = `http://localhost:${port}/api/submit`;
+    const url = `http://localhost:${port}/api/switchBtnState`;
 
     try
     {
@@ -61,8 +69,7 @@ async function sendData(clientData)
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ data: clientData })
+            }
         });
 
         if (!response.ok)
@@ -79,25 +86,49 @@ async function sendData(clientData)
     }
 }
 
-const targetFPS = 1;
+const divDisconnect = document.createElement("div");
+divDisconnect.className = "div-disconnect";
+document.body.append(divDisconnect);
+
+const targetFPS = 15;
 const msPerFrame = 1000 / targetFPS;
 let lastFrameTime = 0;
 let btn = document.getElementById("ping-btn");
+btn.disabled = true;
 
 async function mainLoop(currentTime)
 {
-    requestAnimationFrame(mainLoop);
-
-    const elapsed = currentTime - lastFrameTime;
-
-    if (elapsed >= msPerFrame)
+    if (canJoin)
     {
-        btn.disabled = await isBtnDisabled();
-        lastFrameTime = currentTime - (elapsed % msPerFrame);
+        requestAnimationFrame(mainLoop);
+
+        const elapsed = currentTime - lastFrameTime;
+
+        if (elapsed >= msPerFrame)
+        {
+            btn.disabled = await isBtnDisabled();
+            
+            let usersOnline = await getUsers();
+            if (usersOnline.length < 2)
+            {
+                divDisconnect.innerHTML = "There are currently no users online to ping!";
+            }
+            else
+            {
+                divDisconnect.innerHTML = "";
+            }
+
+            lastFrameTime = currentTime - (elapsed % msPerFrame);
+        }
+    }
+    else
+    {
+        btn.style.visibility = "hidden";
+        divDisconnect.innerHTML = disconnectMessage;
     }
 }
 requestAnimationFrame(mainLoop);
 
 document.querySelector("#ping-btn").addEventListener("click", () => {
-    getUsers();
+    switchBtnState();
 });

@@ -9,6 +9,18 @@ body
     background-image: linear-gradient(rgb(47, 47, 54), rgb(62, 61, 67));
 }
 
+.div-disconnect
+{
+    margin: auto;
+    text-align: center;
+    margin-top: 2vh;
+    color: white;
+    text-shadow: 0 0.4vh black;
+    font-size: 4vh;
+    font-weight: lighter;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
 #ping-btn
 {
     padding: 0;
