@@ -1,5 +1,5 @@
-const port = 3000;
-const socket = io(`http://localhost:${port}`);
+const port = 3000 || process.env.PORT;
+const socket = io(`https://musical-doodle-r449vq99rqrxf5954-${port}.app.github.dev/`);
 
 socket.on("connect", () => {
     console.log(`Client connecting with socket id:${socket.id}`);
@@ -15,7 +15,7 @@ socket.on("connectionDenied", (message) => {
  
 async function getUsers()
 {
-    const url = `http://localhost:${port}/api/users`;
+    const url = `https://musical-doodle-r449vq99rqrxf5954-${port}.app.github.dev/api/users`;
 
     try
     {
@@ -38,7 +38,7 @@ async function getUsers()
 
 async function isBtnDisabled()
 {
-    const url = `http://localhost:${port}/api/data?socketId=${socket.id}`;
+    const url = `https://musical-doodle-r449vq99rqrxf5954-${port}.app.github.dev/api/data?socketId=${socket.id}`;
 
     try
     {
@@ -61,7 +61,7 @@ async function isBtnDisabled()
 
 async function switchBtnState()
 {
-    const url = `http://localhost:${port}/api/switchBtnState`;
+    const url = `https://musical-doodle-r449vq99rqrxf5954-${port}.app.github.dev/api/switchBtnState`;
 
     try
     {

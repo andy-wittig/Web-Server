@@ -6,7 +6,10 @@ const { Server } = require("socket.io");
 const port = process.env.PORT || 3000;
 
 const app = express();
+
+app.use(express.static('public'));
 app.use(express.json());
+
 const httpServer = createServer(app);
 
 const corsOptions ={
@@ -87,6 +90,6 @@ app.post("/api/switchBtnState", (req, res) => {
     res.json({message: "Switched button states!"});
 }); 
 
-httpServer.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`);
+httpServer.listen(port, "0.0.0.0", () => {
+    console.log(`Server is running on port: ${port}`);
 });
