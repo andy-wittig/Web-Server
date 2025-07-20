@@ -205,6 +205,11 @@ async function mainGameLoop(currentTime)
                 playButton.innerHTML = "Clear";
                 playButton.disabled = false;
 
+                for (let i = 0; i < gameboardButtons.length; i++)
+                {
+                    gameboardButtons[i].classList.remove("gameboard-btn-win");
+                }
+
                 if (playButtonPressed) //Clear the game
                 {
                     playButtonPressed = false;
@@ -221,9 +226,12 @@ async function mainGameLoop(currentTime)
 
                         if (gameboardButtonPressed)
                         {
-                            await userSetGameboard(gameboardButtonIndex);
-                            try { await fetch(`${window.location.origin}/api/switch-turns`, { method: "POST" }); }
-                            catch (error) { console.log("Failed to switch turns: ", error); }
+                            gameboardButtonPressed = false;
+                            if (await userSetGameboard(gameboardButtonIndex))
+                            {
+                                try { await fetch(`${window.location.origin}/api/switch-turns`, { method: "POST" }); }
+                                catch (error) { console.log("Failed to switch turns: ", error); }
+                            }
                         }
                     }
                     else { gameMessage.innerHTML = "Please wait while the other player takes their turn."; }
@@ -264,6 +272,12 @@ function getRandIntFromRange(min, max) //Inclusive
 
 async function userSetGameboard(index)
 {
+    const boardPieces = {
+        X: "x",
+        O: "o",
+        CLEAR: "-"
+    };
+
     let gameboard = await getGameBoard();
     let pieceType = await getUserPieceType();
 
@@ -272,10 +286,12 @@ async function userSetGameboard(index)
         for (let j = 0; j < gameboard[i].length; j++)
         {
             let currentIndex = i * (gameboard[i].length) + j;
+
             if (currentIndex == index)
             {
-               gameboard[i][j] = pieceType;
-               break;
+                if (gameboard[i][j] == boardPieces.X || gameboard[i][j] == boardPieces.O) { return false; }
+                else { gameboard[i][j] = pieceType; }
+                break;
             }
         }
     }
@@ -297,10 +313,12 @@ async function userSetGameboard(index)
 
         const result = await response.json();
         console.log(result);
+        return true;
     }
     catch (error)
     {
         console.error("The gameboard could not be posted: ", error.message);
+        return false;
     }
 }
 

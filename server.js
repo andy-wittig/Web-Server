@@ -153,6 +153,20 @@ function clearGame() //Reset server to inital state
     io.emit("boardCleared"); 
 }
 
+function resetGame() //Reset game to playable state
+{
+    gameBoard = [
+        [boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR],
+        [boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR],
+        [boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR],
+        [boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR]
+    ];
+
+    winningPieces = [];
+
+    currentGameState = gameState.PLAYING;
+}
+
 app.get('/api/gameboard', (req, res) => {
     res.json({ gameBoard });
 });
@@ -161,20 +175,24 @@ app.get('/api/winning-pieces', (req, res) => {
     res.json({ winningPieces });
 });
 
-app.post('/api/set-gameboard', (req, res) => {
+app.post('/api/set-gameboard', async (req, res) => {
     const newGameboard = req.body.value;
     gameBoard = newGameboard;
 
-    if (checkBoardWinner(boardPieces.X))
+    res.status(200).json({ message: "Board was set successfully." });
+
+    if (checkBoardWinner(boardPieces.X)) //*** ISSUE: user that won should start first in the next match***
     {
         currentGameState = gameState.GAMEOVER;
+        await delay(4);
+        resetGame();
     }
     else if (checkBoardWinner(boardPieces.O))
     {
         currentGameState = gameState.GAMEOVER;
+        await delay(4);
+        resetGame();
     }
-
-    res.status(200).json({ message: "Board was set successfully." });
 });
 
 app.post('/api/clear-board', (req, res) => {
