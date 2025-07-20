@@ -73,7 +73,24 @@ async function getGameBoard()
     catch(error)
     {
         console.error("Getting the game board failed: ", error);
-        return null;
+        return [];
+    }
+}
+
+async function getWinningPieces()
+{
+    try
+    {
+        const response = await fetch(`${window.location.origin}/api/winning-pieces`);
+        if (!response.ok) { throw new Error(`Failed to fetch winning pieces: ${response.status}`); }
+
+        const data = await response.json();
+        return data.winningPieces;
+    }
+    catch(error)
+    {
+        console.error("Getting the winning pieces failed: ", error);
+        return [];
     }
 }
 
@@ -212,7 +229,17 @@ async function mainGameLoop(currentTime)
                     else { gameMessage.innerHTML = "Please wait while the other player takes their turn."; }
                 }
             }
-            else if (currentGameState == gameState.GAMEOVER) {}
+            else if (currentGameState == gameState.GAMEOVER)
+            {
+                gameMessage.innerHTML = "Game Over!";
+                playButton.disabled = true;
+
+                let winningPieces = await getWinningPieces();
+                for (let k = 0; k < winningPieces.length; k++)
+                {
+                    gameboardButtons[winningPieces[k]].classList.add("gameboard-btn-win");
+                }
+            }
         }
         else
         {
@@ -277,7 +304,7 @@ async function userSetGameboard(index)
     }
 }
 
-async function userRollDice()
+async function userRollDice() //*** ISSUE: Should be a coin toss not dice roll! ***
 {
     diceRoll = getRandIntFromRange(1, 6);
 

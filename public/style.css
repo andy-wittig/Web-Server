@@ -34,6 +34,13 @@ body
     font-size: 3vw;
     transition: all 0.2s ease-in-out;
 }
+
+.gameboard-btn-win
+{
+    background-color: #ec273f;
+    box-shadow: 0px 1vw #ac2847;
+}
+
 .gameboard-btn-normal:hover
 {
     cursor: pointer;

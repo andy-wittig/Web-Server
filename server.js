@@ -77,6 +77,59 @@ let gameBoard = [
     [boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR]
 ];
 
+let winningPieces = [];
+
+function checkBoardWinner(type)
+{
+    for (let i = 0; i < gameBoard.length; i ++) //Rows
+    {
+        if (gameBoard[i][0] == type && gameBoard[i][1] == type &&
+            gameBoard[i][2] == type && gameBoard[i][3] == type )
+        {
+            for (let k = 0; k < 4; k++)
+            {
+                winningPieces[k] = i * (gameBoard.length) + k;
+            }
+            return true;
+        }
+    }
+
+    for (let i = 0; i < gameBoard.length; i ++) //Columns
+    {
+        if (gameBoard[0][i] == type && gameBoard[1][i] == type &&
+            gameBoard[2][i] == type && gameBoard[3][i] == type )
+        {
+            for (let k = 0; k < 4; k++)
+            {
+                winningPieces[k] = (gameBoard.length * k) + i;
+            }
+            return true;
+        }
+    }
+
+    if (gameBoard[0][0] == type && gameBoard[1][1] == type &&
+        gameBoard[2][2] == type && gameBoard[3][3] == type) //Diagonal Down
+    {
+        for (let k = 0; k < 4; k++)
+        {
+            winningPieces[k] = (gameBoard.length * k) + k;
+        }
+        return true;
+    }
+
+    if (gameBoard[0][3] == type && gameBoard[1][2] == type &&
+        gameBoard[2][1] == type && gameBoard[3][0] == type) //Diagonal Up
+    {
+        for (let k = 0; k < 4; k++)
+        {
+            winningPieces[k] = (gameBoard.length - 1) * (k + 1);
+        }
+        return true;
+    }
+
+    return false;
+}
+
 function clearGame() //Reset server to inital state
 {
     gameBoard = [
@@ -86,10 +139,13 @@ function clearGame() //Reset server to inital state
         [boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR]
     ];
 
+    winningPieces = [];
+
     for (const user of connectedUsers.values()) //Reset user data except for id
     {
         user.isUserTurn = false;
         user.userRoll = -1;
+        user.pieceType = "";
     }
 
     currentGameState = gameState.LOBBY;
@@ -98,12 +154,25 @@ function clearGame() //Reset server to inital state
 }
 
 app.get('/api/gameboard', (req, res) => {
-    res.json({gameBoard});
+    res.json({ gameBoard });
+});
+
+app.get('/api/winning-pieces', (req, res) => {
+    res.json({ winningPieces });
 });
 
 app.post('/api/set-gameboard', (req, res) => {
     const newGameboard = req.body.value;
     gameBoard = newGameboard;
+
+    if (checkBoardWinner(boardPieces.X))
+    {
+        currentGameState = gameState.GAMEOVER;
+    }
+    else if (checkBoardWinner(boardPieces.O))
+    {
+        currentGameState = gameState.GAMEOVER;
+    }
 
     res.status(200).json({ message: "Board was set successfully." });
 });
