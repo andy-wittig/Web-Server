@@ -39,7 +39,7 @@ io.on("connection", (socket) => {
     console.log(`Socket connected: ${socket.id}`);
 
     socket.on("identify", (id) => {
-        connectedUsers.set(socket.id, {userID: id, isUserTurn: false, userRoll: -1});
+        connectedUsers.set(socket.id, {userID: id, isUserTurn: false, userRoll: -1, pieceType: ""});
     });
 
     socket.on("disconnect", () => {
@@ -49,7 +49,6 @@ io.on("connection", (socket) => {
     });
 });
 
-//Get endpoint for seeing currently connected users
 app.get('/api/users', (req, res) => {
     const users = Array.from(connectedUsers.values()).map(user => user.userID);
     res.json({ usersOnline: users });
@@ -132,6 +131,14 @@ app.get('/api/user-turn', (req, res) => {
     else { res.status(404).json({ error: "User not found!" }); }
 });
 
+app.get('/api/user-piece-type', (req, res) => {
+    const socketID = req.query.socketID;
+    const user = connectedUsers.get(socketID);
+    
+    if (user) { res.json({ pieceType: user.pieceType }); }
+    else { res.status(404).json({ error: "User not found!" }); }
+});
+
 app.post('/api/switch-turns', (req, res) => {
     switchTurns();
     res.status(200).json({ message: "Users turns switched successfully." });
@@ -164,7 +171,7 @@ app.post('/diceroll', async (req, res) => {
     const diceRoll = req.body.value;
     const user = connectedUsers.get(socketID);
 
-    if (!user) { res.status(404).json({ error: "User not found!" }); }
+    if (!user) { return res.status(404).json({ error: "User not found!" }); }
 
     user.userRoll = diceRoll;
     connectedUsers.set(socketID, user);
@@ -199,8 +206,19 @@ app.post('/diceroll', async (req, res) => {
 
         const updatedUser = connectedUsers.get(closestKey);
         updatedUser.isUserTurn = true;
+        updatedUser.pieceType = boardPieces.O;
         connectedUsers.set(closestKey, updatedUser);
         //console.log(updatedUser);
+
+        for (const [id, user] of connectedUsers) //assign all other users to X
+        {
+            if (id !== closestKey)
+            {
+                user.isUserTurn = false;
+                user.pieceType = boardPieces.X;
+                connectedUsers.set(id, user);
+            }
+        }
 
         await delay(1); //let users read their dice rolls before changing state
         currentGameState = gameState.PLAYING;

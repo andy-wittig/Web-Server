@@ -111,6 +111,23 @@ async function getUserTurn()
     }
 }
 
+async function getUserPieceType()
+{
+    try
+    {
+        const response = await fetch(`${window.location.origin}/api/user-piece-type?socketID=${socket.id}`);
+        if (!response.ok) { throw new Error(`Failed to fetch users piece type: ${response.status}`); }
+
+        const data = await response.json();
+        return data.pieceType;
+    }
+    catch(error)
+    {
+        console.error("Getting users piece type failed: ", error.message);
+        return false;
+    }
+}
+
 const gameState = {
     LOBBY: "lobby",
     PLAYING: "playing",
@@ -221,12 +238,7 @@ function getRandIntFromRange(min, max) //Inclusive
 async function userSetGameboard(index)
 {
     let gameboard = await getGameBoard();
-
-    const boardPieces = {
-        X: "x",
-        O: "o",
-        CLEAR: "-"
-    };
+    let pieceType = await getUserPieceType();
 
     for (let i = 0; i < gameboard.length; i++)
     {
@@ -235,7 +247,7 @@ async function userSetGameboard(index)
             let currentIndex = i * (gameboard[i].length) + j;
             if (currentIndex == index)
             {
-               gameboard[i][j] = boardPieces.X;
+               gameboard[i][j] = pieceType;
                break;
             }
         }
