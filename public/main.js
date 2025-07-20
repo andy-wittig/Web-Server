@@ -20,6 +20,12 @@ socket.on("connectionDenied", (message) => {
     disconnectMessage = message;
 });
 
+socket.on("boardCleared", () => {
+    userHasRolled = false;
+    diceRoll = -1;
+    console.log("The board was cleared.");
+});
+
 let playButtonPressed = false;
 playButton.addEventListener("click", function () {
     playButtonPressed = true;
@@ -47,15 +53,15 @@ async function getGameBoard()
 {
     try
     {
-        const response = await fetch(`${window.location.origin}/api/gameboard`)
+        const response = await fetch(`${window.location.origin}/api/gameboard`);
         if (!response.ok) { throw new Error(`Failed to fetch gameboard: ${response.status}`); }
 
         const data = await response.json();
-        return data.gameBoard
+        return data.gameBoard;
     }
     catch(error)
     {
-        console.error("Getting the game board failed: ", error)
+        console.error("Getting the game board failed: ", error);
         return null;
     }
 }
@@ -64,16 +70,33 @@ async function getGameState()
 {
     try
     {
-        const response = await fetch(`${window.location.origin}/api/gamestate`)
+        const response = await fetch(`${window.location.origin}/api/gamestate`);
         if (!response.ok) { throw new Error(`Failed to fetch gamestate: ${response.status}`); }
 
         const data = await response.json();
-        return data.currentGameState
+        return data.currentGameState;
     }
     catch(error)
     {
-        console.error("Getting the game state failed: ", error.message)
+        console.error("Getting the game state failed: ", error.message);
         return null;
+    }
+}
+
+async function getUserTurn()
+{
+    try
+    {
+        const response = await fetch(`${window.location.origin}/api/user-turn?socketID=${socket.id}`);
+        if (!response.ok) { throw new Error(`Failed to fetch if it is users turn: ${response.status}`); }
+
+        const data = await response.json();
+        return data.isUserTurn;
+    }
+    catch(error)
+    {
+        console.error("Getting if the users turn failed: ", error.message);
+        return false;
     }
 }
 
@@ -81,7 +104,10 @@ const gameState = {
     LOBBY: "lobby",
     PLAYING: "playing",
     GAMEOVER: "gameover",
-}
+};
+
+let userHasRolled = false;
+let diceRoll = -1;
 
 const targetFPS = 1;
 const msPerFrame = 1000 / targetFPS;
@@ -108,20 +134,49 @@ async function mainGameLoop(currentTime)
                 }
                 else
                 {
-                    gameMessage.innerHTML = "Roll too see which player goes first!";
-                    playButton.innerHTML = "Roll";
-                    playButton.disabled = false;
+                    if (!userHasRolled)
+                    {
+                        gameMessage.innerHTML = "Roll to see which player goes first!";
+                        playButton.innerHTML = "Roll";
+                        playButton.disabled = false;
+                    }
 
                     if (playButtonPressed)
                     {
                         await userRollDice();
+
+                        gameMessage.innerHTML = `You rolled a ${diceRoll}.`;
+                        playButton.innerHTML = "Roll";
+                        playButton.disabled = true;
+
                         playButtonPressed = false;
+                        userHasRolled = true;
                     }
                 }
             }
             else if (currentGameState == gameState.PLAYING) 
             {
-                drawGameBoard()
+                await drawGameBoard();
+                
+                playButton.innerHTML = "Clear";
+                playButton.disabled = false;
+
+                if (playButtonPressed) //Clear the game
+                {
+                    try { await fetch(`${window.location.origin}/api/clear-board`, { method: "POST" }); }
+                    catch (error) { console.log("Failed to clear board: ", error); }
+                    playButtonPressed = false;
+                }
+                else
+                {
+                    let isMyTurn = await getUserTurn();
+
+                    if (isMyTurn)
+                    {
+                        gameMessage.innerHTML = "It's your turn, so choose a tile to mark.";
+                    }
+                    else { gameMessage.innerHTML = "Please wait while the other player takes their turn."; }
+                }
             }
             else if (currentGameState == gameState.GAMEOVER) {}
         }
@@ -145,7 +200,7 @@ function getRandIntFromRange(min, max) //Inclusive
 
 async function userRollDice()
 {
-    let diceRoll = getRandIntFromRange(1, 6);
+    diceRoll = getRandIntFromRange(1, 6);
 
     try
     {
@@ -183,14 +238,14 @@ async function drawGameBoard()
     const boardPieces = {
         X: "x",
         O: "o",
-        CLEAR: ""
-    }
+        CLEAR: "-"
+    };
 
     for (let i = 0; i < gameboard.length; i++)
     {
         for (let j = 0; j < gameboard[i].length; j++)
         {
-            gameboardButtons[i][j].innerHTML = gameboard[i][j];
+            gameboardButtons[i * (gameboard[i].length) + j].innerHTML = gameboard[i][j];
         }
     }
 }
