@@ -34,6 +34,11 @@ body
     font-size: 3vw;
     transition: all 0.2s ease-in-out;
 }
+.gameboard-btn-normal:hover
+{
+    cursor: pointer;
+    animation: scale-emphasize 1s infinite ease-in-out;
+}
 
 #play-btn
 {
@@ -57,6 +62,17 @@ body
     text-shadow: 0px .2vw #10121c;
     background-color: #2c1e31;
     box-shadow: 0px 1vw #10121c;
+}
+
+#play-btn:hover:enabled
+{
+    cursor: pointer;
+    animation: scale-emphasize 1s infinite ease-in-out;
+}
+@keyframes scale-emphasize
+{
+    0%, 100% { transform: scale(1) translateY(0); }
+    50% { transform: scale(1.05) translateY(-0.2vw); }
 }
 
 #game-message

@@ -64,7 +64,7 @@ app.get('/api/data', (req, res) => {
 });
 //----------Handle Connections----------
 
-//Board Variables
+//----------Handle Gameboard----------
 const boardPieces = {
     X: "x",
     O: "o",
@@ -98,15 +98,31 @@ function clearGame() //Reset server to inital state
     io.emit("boardCleared"); 
 }
 
-//Get endpoint for client to poll the game board
 app.get('/api/gameboard', (req, res) => {
     res.json({gameBoard});
+});
+
+app.post('/api/set-gameboard', (req, res) => {
+    const newGameboard = req.body.value;
+    gameBoard = newGameboard;
+
+    res.status(200).json({ message: "Board was set successfully." });
 });
 
 app.post('/api/clear-board', (req, res) => {
     clearGame();
     res.status(200).json({ message: "Board was cleared successfully." });
 });
+//----------Handle Gameboard----------
+
+//----------Handle Users----------
+function switchTurns()
+{
+    for (const [id, user] of connectedUsers)
+    {
+        user.isUserTurn = !user.isUserTurn;
+    }
+}
 
 app.get('/api/user-turn', (req, res) => {
     const socketID = req.query.socketID;
@@ -115,6 +131,12 @@ app.get('/api/user-turn', (req, res) => {
     if (user) { res.json({ isUserTurn: user.isUserTurn }); }
     else { res.status(404).json({ error: "User not found!" }); }
 });
+
+app.post('/api/switch-turns', (req, res) => {
+    switchTurns();
+    res.status(200).json({ message: "Users turns switched successfully." });
+});
+//----------Handle Users----------
 
 //----------Game State----------
 const gameState = {
@@ -125,12 +147,10 @@ const gameState = {
 
 let currentGameState = gameState.LOBBY
 
-//Get endpoint for client to poll the game state
 app.get('/api/gamestate', (req, res) => {
     res.json({currentGameState});
 });
 
-//Post endpoint for client to set the game state
 app.post("/submit", (req, res) => {
     const incomingState = req.body.value;
     currentGameState = incomingState
@@ -182,7 +202,7 @@ app.post('/diceroll', async (req, res) => {
         connectedUsers.set(closestKey, updatedUser);
         //console.log(updatedUser);
 
-        await delay(2); //let users read their dice rolls before changing state
+        await delay(1); //let users read their dice rolls before changing state
         currentGameState = gameState.PLAYING;
     }
 });

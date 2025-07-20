@@ -30,6 +30,17 @@ let playButtonPressed = false;
 playButton.addEventListener("click", function () {
     playButtonPressed = true;
 });
+
+let gameboardButtonPressed = false;
+let gameboardButtonIndex = 0;
+for (let i = 0; i < gameboardButtons.length; i++) 
+{
+    const button = gameboardButtons[i];
+    button.addEventListener("click", () => {
+        gameboardButtonIndex = Number(button.dataset.num);
+        gameboardButtonPressed = true;
+    });
+}
  
 async function getUsersOnline()
 {
@@ -109,7 +120,7 @@ const gameState = {
 let userHasRolled = false;
 let diceRoll = -1;
 
-const targetFPS = 1;
+const targetFPS = 10;
 const msPerFrame = 1000 / targetFPS;
 let lastFrameTime = 0;
 
@@ -122,6 +133,8 @@ async function mainGameLoop(currentTime)
         if (canUserConnect)
         {
             let currentGameState = await getGameState();
+
+            await drawGameBoard();
 
             if (currentGameState == gameState.LOBBY) 
             {
@@ -149,23 +162,20 @@ async function mainGameLoop(currentTime)
                         playButton.innerHTML = "Roll";
                         playButton.disabled = true;
 
-                        playButtonPressed = false;
                         userHasRolled = true;
                     }
                 }
             }
             else if (currentGameState == gameState.PLAYING) 
             {
-                await drawGameBoard();
-                
                 playButton.innerHTML = "Clear";
                 playButton.disabled = false;
 
                 if (playButtonPressed) //Clear the game
                 {
+                    playButtonPressed = false;
                     try { await fetch(`${window.location.origin}/api/clear-board`, { method: "POST" }); }
                     catch (error) { console.log("Failed to clear board: ", error); }
-                    playButtonPressed = false;
                 }
                 else
                 {
@@ -174,6 +184,13 @@ async function mainGameLoop(currentTime)
                     if (isMyTurn)
                     {
                         gameMessage.innerHTML = "It's your turn, so choose a tile to mark.";
+
+                        if (gameboardButtonPressed)
+                        {
+                            await userSetGameboard(gameboardButtonIndex);
+                            try { await fetch(`${window.location.origin}/api/switch-turns`, { method: "POST" }); }
+                            catch (error) { console.log("Failed to switch turns: ", error); }
+                        }
                     }
                     else { gameMessage.innerHTML = "Please wait while the other player takes their turn."; }
                 }
@@ -184,6 +201,9 @@ async function mainGameLoop(currentTime)
         {
             divDisconnect.innerHTML = disconnectMessage;
         }
+
+        playButtonPressed = false;
+        gameboardButtonPressed = false;
 
         lastFrameTime = currentTime - (elapsed % msPerFrame);
     }
@@ -196,6 +216,53 @@ function getRandIntFromRange(min, max) //Inclusive
     min = Math.ceil(min);
     max = Math.floor(max);
     return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+async function userSetGameboard(index)
+{
+    let gameboard = await getGameBoard();
+
+    const boardPieces = {
+        X: "x",
+        O: "o",
+        CLEAR: "-"
+    };
+
+    for (let i = 0; i < gameboard.length; i++)
+    {
+        for (let j = 0; j < gameboard[i].length; j++)
+        {
+            let currentIndex = i * (gameboard[i].length) + j;
+            if (currentIndex == index)
+            {
+               gameboard[i][j] = boardPieces.X;
+               break;
+            }
+        }
+    }
+
+    try
+    {
+        const response = await fetch(`${window.location.origin}/api/set-gameboard`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ value: gameboard })
+        });
+
+        if (!response.ok)
+        {
+            throw new Error(`Response status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log(result);
+    }
+    catch (error)
+    {
+        console.error("The gameboard could not be posted: ", error.message);
+    }
 }
 
 async function userRollDice()
@@ -228,12 +295,7 @@ async function userRollDice()
 
 async function drawGameBoard()
 {
-    let gameboard = await getGameBoard()
-    if (gameboard === null) 
-    { 
-        console.log("Game board could not be drawn!");
-        return; 
-    }
+    let gameboard = await getGameBoard();
 
     const boardPieces = {
         X: "x",
