@@ -46,6 +46,11 @@ io.on("connection", (socket) => {
         const user = connectedUsers.get(socket.id);
         connectedUsers.delete(socket.id);
         console.log(`User ${user.userID} disconnected and removed`);
+
+        if (connectedUsers.size < 2)
+        {
+            clearGame();
+        }
     });
 });
 

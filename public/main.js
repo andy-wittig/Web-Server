@@ -274,7 +274,9 @@ async function mainGameLoop(currentTime)
         }
         else
         {
-            divDisconnect.innerHTML = disconnectMessage;
+            gameMessage.innerHTML = "Sorry, there are too many users connected, please wait your turn!";
+            playButton.innerHTML = ":("
+            playButton.disabled = true;
         }
 
         playButtonPressed = false;
