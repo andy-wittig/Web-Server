@@ -39,7 +39,7 @@ io.on("connection", (socket) => {
     console.log(`Socket connected: ${socket.id}`);
 
     socket.on("identify", (id) => {
-        connectedUsers.set(socket.id, {userID: id, isUserTurn: false, userRoll: -1, pieceType: ""});
+        connectedUsers.set(socket.id, {userID: id, isUserTurn: false, userRoll: -1, pieceType: "", isUserWinner: false});
     });
 
     socket.on("disconnect", () => {
@@ -146,6 +146,7 @@ function clearGame() //Reset server to inital state
         user.isUserTurn = false;
         user.userRoll = -1;
         user.pieceType = "";
+        user.isUserWinner = false;
     }
 
     currentGameState = gameState.LOBBY;
@@ -176,19 +177,46 @@ app.get('/api/winning-pieces', (req, res) => {
 });
 
 app.post('/api/set-gameboard', async (req, res) => {
+    const socketID = req.query.socketID;
+    const user = connectedUsers.get(socketID);
     const newGameboard = req.body.value;
+
     gameBoard = newGameboard;
 
     res.status(200).json({ message: "Board was set successfully." });
 
     if (checkBoardWinner(boardPieces.X)) //*** ISSUE: user that won should start first in the next match***
     {
+        if (user.pieceType == boardPieces.X) 
+        {
+            for (const [id, user] of connectedUsers)
+            {
+                if (id !== socketID)
+                {
+                    user.isUserWinner = false;
+                }
+            }
+            user.isUserWinner = true;
+            connectedUsers.set(socketID, user);
+        }
         currentGameState = gameState.GAMEOVER;
         await delay(4);
         resetGame();
     }
     else if (checkBoardWinner(boardPieces.O))
     {
+        if (user.pieceType == boardPieces.O) 
+        { 
+            for (const [id, user] of connectedUsers)
+            {
+                if (id !== socketID)
+                {
+                    user.isUserWinner = false;
+                }
+            }
+            user.isUserWinner = true;
+            connectedUsers.set(socketID, user);
+        }
         currentGameState = gameState.GAMEOVER;
         await delay(4);
         resetGame();
@@ -224,6 +252,22 @@ app.get('/api/user-piece-type', (req, res) => {
     
     if (user) { res.json({ pieceType: user.pieceType }); }
     else { res.status(404).json({ error: "User not found!" }); }
+});
+
+app.get('/api/user-winner', (req, res) => {
+    const socketID = req.query.socketID;
+    const user = connectedUsers.get(socketID);
+    
+    if (user) { res.json({ isUserWinner: user.isUserWinner }); }
+    else { res.status(404).json({ error: "User not found!" }); }
+});
+
+app.post('/api/reset-winners', (req, res) => {
+    for (const [id, user] of connectedUsers)
+    {
+        user.isUserWinner = false;
+    }
+    res.status(200).json({ message: "Users win status reset successfully." });
 });
 
 app.post('/api/switch-turns', (req, res) => {

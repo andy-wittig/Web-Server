@@ -145,6 +145,23 @@ async function getUserPieceType()
     }
 }
 
+async function getUserWinner()
+{
+    try
+    {
+        const response = await fetch(`${window.location.origin}/api/user-winner?socketID=${socket.id}`);
+        if (!response.ok) { throw new Error(`Failed to fetch users win status: ${response.status}`); }
+
+        const data = await response.json();
+        return data.isUserWinner;
+    }
+    catch(error)
+    {
+        console.error("Getting users win status failed: ", error.message);
+        return false;
+    }
+}
+
 const gameState = {
     LOBBY: "lobby",
     PLAYING: "playing",
@@ -229,8 +246,11 @@ async function mainGameLoop(currentTime)
                             gameboardButtonPressed = false;
                             if (await userSetGameboard(gameboardButtonIndex))
                             {
-                                try { await fetch(`${window.location.origin}/api/switch-turns`, { method: "POST" }); }
-                                catch (error) { console.log("Failed to switch turns: ", error); }
+                                if (!await getUserWinner())
+                                {
+                                    try { await fetch(`${window.location.origin}/api/switch-turns`, { method: "POST" }); }
+                                    catch (error) { console.log("Failed to switch turns: ", error); }
+                                }
                             }
                         }
                     }
@@ -247,6 +267,9 @@ async function mainGameLoop(currentTime)
                 {
                     gameboardButtons[winningPieces[k]].classList.add("gameboard-btn-win");
                 }
+
+                try { await fetch(`${window.location.origin}/api/reset-winners`, { method: "POST" }); }
+                catch (error) { console.log("Failed to reset winners: ", error); }
             }
         }
         else
@@ -298,7 +321,7 @@ async function userSetGameboard(index)
 
     try
     {
-        const response = await fetch(`${window.location.origin}/api/set-gameboard`, {
+        const response = await fetch(`${window.location.origin}/api/set-gameboard?socketID=${socket.id}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
