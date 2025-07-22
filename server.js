@@ -1,10 +1,11 @@
+//Express and CORS includes
 const express = require('express');
 const cors = require("cors");
 const { createServer } = require("node:http");
 const { Server } = require("socket.io");
 
+//----------Server Setup----------
 const port = process.env.PORT || 3000;
-
 const app = express();
 
 app.use(express.static('public'));
@@ -21,14 +22,16 @@ app.use(cors(corsOptions));
 const io = new Server(httpServer, {
     cors: corsOptions
 });
+//----------Server Setup----------
 
+//----------Handle Connections----------
 const connectedUsers = new Map();
 
 io.on("connection", (socket) => {
     if (connectedUsers.size >= 2)
     {
-        console.log("Sorry, your connection has been denied, there are too many users");
-        socket.emit("connectionDenied", "Maximum number of users reached.");
+        console.log("Sorry, your connection has been denied, there are too many users connected.");
+        socket.emit("connectionDenied", "Maximum number of users has been reached.");
         socket.disconnect(true);
         return;
     }
@@ -36,59 +39,341 @@ io.on("connection", (socket) => {
     console.log(`Socket connected: ${socket.id}`);
 
     socket.on("identify", (id) => {
-        if (connectedUsers.size > 0)
-        {
-            setBtnState(false);
-        }
-        connectedUsers.set(socket.id, {userId: id, isBtnDisabled: true});
+        connectedUsers.set(socket.id, {userID: id, isUserTurn: false, userRoll: -1, pieceType: "", isUserWinner: false});
     });
 
     socket.on("disconnect", () => {
         const user = connectedUsers.get(socket.id);
         connectedUsers.delete(socket.id);
-        console.log(`User ${user.userId} disconnected and removed`);
-        if (connectedUsers.size <= 1) { setBtnState(true); }
+        console.log(`User ${user.userID} disconnected and removed`);
+
+        if (connectedUsers.size < 2)
+        {
+            clearGame();
+        }
     });
 });
 
-//Get Endpoint
 app.get('/api/users', (req, res) => {
-    const users = Array.from(connectedUsers.values()).map(user => user.userId);
+    const users = Array.from(connectedUsers.values()).map(user => user.userID);
     res.json({ usersOnline: users });
 });
 
 app.get('/api/data', (req, res) => {
-    if (connectedUsers.size <= 2 && connectedUsers.size > 0)
+    const socketID = req.query.socketID;
+    const user = connectedUsers.get(socketID);
+
+    if (user) { res.json({ user }); }
+    else { res.status(404).json({ error: "User not found!" }); }
+});
+//----------Handle Connections----------
+
+//----------Handle Gameboard----------
+const boardPieces = {
+    X: "x",
+    O: "o",
+    CLEAR: "-"
+};
+
+let gameBoard = [
+    [boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR],
+    [boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR],
+    [boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR],
+    [boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR]
+];
+
+let winningPieces = [];
+
+function checkBoardWinner(type)
+{
+    for (let i = 0; i < gameBoard.length; i ++) //Rows
     {
-        const socketId = req.query.socketId;
-        const user = connectedUsers.get(socketId);
-        res.json({ isDisabled: user.isBtnDisabled });
+        if (gameBoard[i][0] == type && gameBoard[i][1] == type &&
+            gameBoard[i][2] == type && gameBoard[i][3] == type )
+        {
+            for (let k = 0; k < 4; k++)
+            {
+                winningPieces[k] = i * (gameBoard.length) + k;
+            }
+            return true;
+        }
+    }
+
+    for (let i = 0; i < gameBoard.length; i ++) //Columns
+    {
+        if (gameBoard[0][i] == type && gameBoard[1][i] == type &&
+            gameBoard[2][i] == type && gameBoard[3][i] == type )
+        {
+            for (let k = 0; k < 4; k++)
+            {
+                winningPieces[k] = (gameBoard.length * k) + i;
+            }
+            return true;
+        }
+    }
+
+    if (gameBoard[0][0] == type && gameBoard[1][1] == type &&
+        gameBoard[2][2] == type && gameBoard[3][3] == type) //Diagonal Down
+    {
+        for (let k = 0; k < 4; k++)
+        {
+            winningPieces[k] = (gameBoard.length * k) + k;
+        }
+        return true;
+    }
+
+    if (gameBoard[0][3] == type && gameBoard[1][2] == type &&
+        gameBoard[2][1] == type && gameBoard[3][0] == type) //Diagonal Up
+    {
+        for (let k = 0; k < 4; k++)
+        {
+            winningPieces[k] = (gameBoard.length - 1) * (k + 1);
+        }
+        return true;
+    }
+
+    return false;
+}
+
+function clearGame() //Reset server to inital state
+{
+    gameBoard = [
+        [boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR],
+        [boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR],
+        [boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR],
+        [boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR]
+    ];
+
+    winningPieces = [];
+
+    for (const user of connectedUsers.values()) //Reset user data except for id
+    {
+        user.isUserTurn = false;
+        user.userRoll = -1;
+        user.pieceType = "";
+        user.isUserWinner = false;
+    }
+
+    currentGameState = gameState.LOBBY;
+    
+    io.emit("boardCleared"); 
+}
+
+function resetGame() //Reset game to playable state
+{
+    gameBoard = [
+        [boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR],
+        [boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR],
+        [boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR],
+        [boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR, boardPieces.CLEAR]
+    ];
+
+    winningPieces = [];
+
+    currentGameState = gameState.PLAYING;
+}
+
+app.get('/api/gameboard', (req, res) => {
+    res.json({ gameBoard });
+});
+
+app.get('/api/winning-pieces', (req, res) => {
+    res.json({ winningPieces });
+});
+
+app.post('/api/set-gameboard', async (req, res) => {
+    const socketID = req.query.socketID;
+    const user = connectedUsers.get(socketID);
+    const newGameboard = req.body.value;
+
+    gameBoard = newGameboard;
+
+    res.status(200).json({ message: "Board was set successfully." });
+
+    if (checkBoardWinner(boardPieces.X)) //*** ISSUE: user that won should start first in the next match***
+    {
+        if (user.pieceType == boardPieces.X) 
+        {
+            for (const [id, user] of connectedUsers)
+            {
+                if (id !== socketID)
+                {
+                    user.isUserWinner = false;
+                }
+            }
+            user.isUserWinner = true;
+            connectedUsers.set(socketID, user);
+        }
+        currentGameState = gameState.GAMEOVER;
+        await delay(4);
+        resetGame();
+    }
+    else if (checkBoardWinner(boardPieces.O))
+    {
+        if (user.pieceType == boardPieces.O) 
+        { 
+            for (const [id, user] of connectedUsers)
+            {
+                if (id !== socketID)
+                {
+                    user.isUserWinner = false;
+                }
+            }
+            user.isUserWinner = true;
+            connectedUsers.set(socketID, user);
+        }
+        currentGameState = gameState.GAMEOVER;
+        await delay(4);
+        resetGame();
     }
 });
 
-function switchBtnState()
+app.post('/api/clear-board', (req, res) => {
+    clearGame();
+    res.status(200).json({ message: "Board was cleared successfully." });
+});
+//----------Handle Gameboard----------
+
+//----------Handle Users----------
+function switchTurns()
 {
-    for (const [socketId, user] of connectedUsers)
+    for (const [id, user] of connectedUsers)
     {
-        const updatedUserInfo = { ...user, isBtnDisabled: !user.isBtnDisabled };
-        connectedUsers.set(socketId, updatedUserInfo);
+        user.isUserTurn = !user.isUserTurn;
     }
 }
 
-function setBtnState(state)
-{
-    for (const [socketId, user] of connectedUsers)
-    {
-        const updatedUserInfo = { ...user, isBtnDisabled: state };
-        connectedUsers.set(socketId, updatedUserInfo);
-    }
-}
+app.get('/api/user-turn', (req, res) => {
+    const socketID = req.query.socketID;
+    const user = connectedUsers.get(socketID);
+    
+    if (user) { res.json({ isUserTurn: user.isUserTurn }); }
+    else { res.status(404).json({ error: "User not found!" }); }
+});
 
-//Post Endpoint
-app.post("/api/switchBtnState", (req, res) => {
-    switchBtnState()
-    res.json({message: "Switched button states!"});
+app.get('/api/user-piece-type', (req, res) => {
+    const socketID = req.query.socketID;
+    const user = connectedUsers.get(socketID);
+    
+    if (user) { res.json({ pieceType: user.pieceType }); }
+    else { res.status(404).json({ error: "User not found!" }); }
+});
+
+app.get('/api/user-winner', (req, res) => {
+    const socketID = req.query.socketID;
+    const user = connectedUsers.get(socketID);
+    
+    if (user) { res.json({ isUserWinner: user.isUserWinner }); }
+    else { res.status(404).json({ error: "User not found!" }); }
+});
+
+app.post('/api/reset-winners', (req, res) => {
+    for (const [id, user] of connectedUsers)
+    {
+        user.isUserWinner = false;
+    }
+    res.status(200).json({ message: "Users win status reset successfully." });
+});
+
+app.post('/api/switch-turns', (req, res) => {
+    switchTurns();
+    res.status(200).json({ message: "Users turns switched successfully." });
+});
+//----------Handle Users----------
+
+//----------Game State----------
+const gameState = {
+    LOBBY: "lobby",
+    PLAYING: "playing",
+    GAMEOVER: "gameover",
+};
+
+let currentGameState = gameState.LOBBY
+
+app.get('/api/gamestate', (req, res) => {
+    res.json({currentGameState});
+});
+
+app.post("/submit", (req, res) => {
+    const incomingState = req.body.value;
+    currentGameState = incomingState
+    res.json({message: `The game state was set to: ${incomingState}`});
 }); 
+//----------Game State----------
+
+//----------Dice Rolling----------
+app.post('/diceroll', async (req, res) => {
+    const socketID = req.query.socketID;
+    const diceRoll = req.body.value;
+    const user = connectedUsers.get(socketID);
+
+    if (!user) { return res.status(404).json({ error: "User not found!" }); }
+
+    user.userRoll = diceRoll;
+    connectedUsers.set(socketID, user);
+
+    res.json({message: `User ${user.userID} rolled: ${diceRoll}`});
+
+    let diceRollsComplete = true
+    for (const [id, user] of connectedUsers)
+    {
+        if (user.userRoll < 1) 
+        { 
+            diceRollsComplete = false;
+            break;
+        }
+    }
+
+    if (diceRollsComplete)
+    {
+        let serverRoll = getRandIntFromRange(1, 6);
+        let closestDiff = Infinity;
+        let closestKey = null;
+
+        for (const [id, user] of connectedUsers)
+        {
+            const diff = Math.abs(user.userRoll - serverRoll);
+            if (diff < closestDiff)
+            {
+                closestDiff = diff;
+                closestKey = id;
+            }
+        }
+
+        const updatedUser = connectedUsers.get(closestKey);
+        updatedUser.isUserTurn = true;
+        updatedUser.pieceType = boardPieces.O;
+        connectedUsers.set(closestKey, updatedUser);
+        //console.log(updatedUser);
+
+        for (const [id, user] of connectedUsers) //assign all other users to X
+        {
+            if (id !== closestKey)
+            {
+                user.isUserTurn = false;
+                user.pieceType = boardPieces.X;
+                connectedUsers.set(id, user);
+            }
+        }
+
+        await delay(1); //let users read their dice rolls before changing state
+        currentGameState = gameState.PLAYING;
+    }
+});
+//----------Dice Rolling----------
+
+function getRandIntFromRange(min, max) //Inclusive
+{
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+async function delay(time)
+{
+    let seconds = time * 1000;
+    return new Promise(resolve => setTimeout(resolve, seconds));
+}
 
 httpServer.listen(port, "0.0.0.0", () => {
     console.log(`Server is running on port: ${port}`);

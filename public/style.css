@@ -9,48 +9,84 @@ body
     background-image: linear-gradient(rgb(47, 47, 54), rgb(62, 61, 67));
 }
 
-.div-disconnect
+#gameboard-container
 {
-    margin: auto;
-    text-align: center;
-    margin-top: 2vh;
-    color: white;
-    text-shadow: 0 0.4vh black;
-    font-size: 4vh;
-    font-weight: lighter;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: grid;
+    justify-content: center;
+    grid-template-columns: 6vw 6vw 6vw 6vw;
+    grid-template-rows: 6vw 6vw 6vw 6vw;
+    grid-gap: 0.8vw;
+    padding: 4vw;
 }
 
-#ping-btn
+.gameboard-btn-normal
 {
-    padding: 0;
-    display: block;
-    margin: auto;
-    margin-top: 25vh;
-    color: white;
-    text-shadow: 0 0.4vh black;
-    background-color: rgb(242, 66, 53);
+    display: flex;
+    justify-content: center;
+    align-items: center;
     border: none;
-    border-radius: 10%;
-    box-shadow: 0vw 1vw rgb(52, 23, 32);
-    font-size: 10vh;
-    font-weight: lighter;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    border-radius: 20%;
+    background-color: #62a477;
+    box-shadow: 0px 1vw #008b8b;
+    color: white;
+    text-shadow: 0px .2vw #008b8b;
+    font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+    font-size: 3vw;
+    transition: all 0.2s ease-in-out;
 }
 
-#ping-btn:hover:enabled
+.gameboard-btn-win
 {
-    border: 0.6vh solid white;
+    background-color: #ec273f;
+    box-shadow: 0px 1vw #ac2847;
 }
 
-#ping-btn:active:enabled
+.gameboard-btn-normal:hover
 {
-    box-shadow: 0vw 0.5vw rgb(52, 23, 32);
-    transform: translateY(1vh);
+    cursor: pointer;
+    animation: scale-emphasize 1s infinite ease-in-out;
 }
 
-#ping-btn:disabled
+#play-btn
 {
-    background-color: rgb(150, 150, 150);
-    box-shadow: 0vw 1vw rgb(90, 88, 95);
+    color: white;
+    text-shadow: 0px .2vw #8c78a5;
+    margin: auto;
+    display: block;
+    padding: 0.5vw;
+    border: none;
+    border-radius: 20%;
+    background-color: #b0a7b8;
+    box-shadow: 0px 1vw #8c78a5;
+    font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+    font-size: 2vw;
+    font-weight: bold;
+}
+
+#play-btn:disabled
+{
+    color: #3e3b65;
+    text-shadow: 0px .2vw #10121c;
+    background-color: #2c1e31;
+    box-shadow: 0px 1vw #10121c;
+}
+
+#play-btn:hover:enabled
+{
+    cursor: pointer;
+    animation: scale-emphasize 1s infinite ease-in-out;
+}
+@keyframes scale-emphasize
+{
+    0%, 100% { transform: scale(1) translateY(0); }
+    50% { transform: scale(1.05) translateY(-0.2vw); }
+}
+
+#game-message
+{
+    color: white;
+    text-align: center;
+    font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+    font-size: 2vw;
+    padding: 2vw;
 }
